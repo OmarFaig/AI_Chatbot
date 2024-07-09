@@ -1,6 +1,19 @@
 from flask import Flask, request, jsonify, render_template
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 
 app = Flask(__name__)
+
+model_name = "microsoft/DialoGPT-medium"
+tokenizer  =  AutoTokenizer.from_pretrained(model_name)
+model      =  AutoModelForCausalLM.from_pretrained(model_name)
+
+def generate_response(prompt):
+    inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
+    with torch.no_grad():
+        outputs = model.generate(inputs.input_ids, attention_mask=inputs.attention_mask, max_length=100)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
 
 @app.route('/')
 def index():
@@ -10,7 +23,9 @@ def index():
 def chat():
     user_message = request.json.get('message')
     # Add logic to handle the user message
-    return jsonify({'response': "hello world"})
+    response = generate_response(user_message)
+    return jsonify({'response': response})
+    #return jsonify({'response': "hello world"})
 
 if __name__ == '__main__':
     app.run(debug=True)
