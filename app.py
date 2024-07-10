@@ -4,9 +4,12 @@ import torch
 
 app = Flask(__name__)
 
-model_name = "microsoft/DialoGPT-medium"
-tokenizer  =  AutoTokenizer.from_pretrained(model_name)
-model      =  AutoModelForCausalLM.from_pretrained(model_name)
+model_name = "microsoft/DialoGPT-medium"  # Use a conversational model
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name)
+
+# Set the padding token to be the same as the eos token
+tokenizer.pad_token = tokenizer.eos_token
 
 def generate_response(prompt):
     inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
@@ -22,10 +25,8 @@ def index():
 @app.route('/chat', methods=['POST'])
 def chat():
     user_message = request.json.get('message')
-    # Add logic to handle the user message
     response = generate_response(user_message)
     return jsonify({'response': response})
-    #return jsonify({'response': "hello world"})
 
 if __name__ == '__main__':
     app.run(debug=True)
