@@ -14,19 +14,21 @@ tokenizer.pad_token = tokenizer.eos_token
 def generate_response(prompt):
     inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
     with torch.no_grad():
-        outputs = model.generate(inputs.input_ids, attention_mask=inputs.attention_mask, max_length=100)
+        outputs = model.generate(inputs.input_ids, attention_mask=inputs.attention_mask, max_length=1000)
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    print(response)
     return response
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+generate_response ("What is your name")
+#@app.route('/')
+#def index():
+#    return render_template('index.html')
+#
+#@app.route('/chat', methods=['POST'])
+#def chat():
+#    user_message = request.json.get('message')
+#    response = generate_response(user_message)
+#    return jsonify({'response': response})
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    user_message = request.json.get('message')
-    response = generate_response(user_message)
-    return jsonify({'response': response})
-
-if __name__ == '__main__':
-    app.run(debug=True)
+#if __name__ == '__main__':
+#    app.run(debug=True)
