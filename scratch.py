@@ -1,45 +1,54 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import re
 import torch
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
-# Load the pre-trained model and tokenizer
-model_name = "gpt2"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
+# Load the pre-trained GPT-2 model and tokenizer
+model_name = "gpt2-large"
+tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+model = GPT2LMHeadModel.from_pretrained(model_name)
 
-# Start the conversation loop
-print("Hello! I am your chatbot. Type 'quit' to exit.")
-chat_history_ids = None
+# Set the model to evaluation mode
+model.eval()
 
+def remove_repeated_sentences(text):
+    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
+    unique_sentences = []
+    for sentence in sentences:
+        if sentence not in unique_sentences:
+            unique_sentences.append(sentence)
+        else:
+            break  # Stop adding sentences after the first repetition
+    return ' '.join(unique_sentences)
+
+def clean_response(response_text, prompt):
+    # Remove the prompt from the response
+    stripped_response = response_text.replace(prompt, '').strip()
+
+    # Split the stripped response text into lines
+    lines = stripped_response.split('\n')
+
+    combined_lines = " ".join(line.strip() for line in lines if line.strip())
+    return remove_repeated_sentences(combined_lines)
+
+
+def generate_response(prompt, max_length=100):
+    input_ids = tokenizer.encode(prompt, return_tensors="pt")
+
+    # Generate response
+    with torch.no_grad():
+        output = model.generate(input_ids, max_length=100, num_return_sequences=1, pad_token_id=tokenizer.eos_token_id)
+
+    response = tokenizer.decode(output[0], skip_special_tokens=True)
+    cleaned_response = clean_response(response, prompt)
+
+    return cleaned_response
+
+print("Chatbot: Hi there! How can I help you?")
 while True:
-    # Get user input
     user_input = input("You: ")
-
-    if user_input.lower() == "quit":
+    if user_input.lower() == "exit":
+        print("Chatbot: Goodbye!")
         break
 
-    # Encode the new user input and concatenate it to the chat history
-    new_user_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
-
-    if chat_history_ids is None:
-        bot_input_ids = new_user_input_ids
-    else:
-        bot_input_ids = torch.cat([chat_history_ids, new_user_input_ids], dim=-1)
-
-    # Print debug information
-    print(f"User Input IDs: {new_user_input_ids}")
-    print(f"Bot Input IDs: {bot_input_ids}")
-
-    # Generate a response from the model
-    attention_mask = torch.ones(bot_input_ids.shape, device=bot_input_ids.device)
-    chat_history_ids = model.generate(
-        bot_input_ids,
-        attention_mask=attention_mask,
-        max_length=bot_input_ids.shape[-1] + 50,  # Limit the max length to avoid infinite generation
-        pad_token_id=tokenizer.eos_token_id,
-       # do_sample=True,  # Allow for more varied responses
-        temperature=0.1  # Control the randomness of the output
-    )
-
-    # Decode and print the response
-    bot_response = tokenizer.decode(chat_history_ids[:, bot_input_ids.shape[-1]:][0], skip_special_tokens=True)
-    print(f"Bot: {bot_response}")
+    response = generate_response(user_input)
+    print("Chatbot:", response)
