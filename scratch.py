@@ -1,54 +1,31 @@
-import re
-import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# Load the pre-trained GPT-2 model and tokenizer
-model_name = "gpt2-large"
-tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-model = GPT2LMHeadModel.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained("AdaptLLM/finance-chat")
+tokenizer = AutoTokenizer.from_pretrained("AdaptLLM/finance-chat")
 
-# Set the model to evaluation mode
-model.eval()
+# Put your input here:
+user_input = '''Use this fact to answer the question: Title of each class Trading Symbol(s) Name of each exchange on which registered
+Common Stock, Par Value $.01 Per Share MMM New York Stock Exchange
+MMM Chicago Stock Exchange, Inc.
+1.500% Notes due 2026 MMM26 New York Stock Exchange
+1.750% Notes due 2030 MMM30 New York Stock Exchange
+1.500% Notes due 2031 MMM31 New York Stock Exchange
 
-def remove_repeated_sentences(text):
-    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s', text)
-    unique_sentences = []
-    for sentence in sentences:
-        if sentence not in unique_sentences:
-            unique_sentences.append(sentence)
-        else:
-            break  # Stop adding sentences after the first repetition
-    return ' '.join(unique_sentences)
+Which debt securities are registered to trade on a national securities exchange under 3M's name as of Q2 of 2023?'''
 
-def clean_response(response_text, prompt):
-    # Remove the prompt from the response
-    stripped_response = response_text.replace(prompt, '').strip()
+# Apply the prompt template and system prompt of LLaMA-2-Chat demo for chat models (NOTE: NO prompt template is required for base models!)
+our_system_prompt = "\nYou are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.\n\nIf a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.\n" # Please do NOT change this
+prompt = f"<s>[INST] <<SYS>>{our_system_prompt}<</SYS>>\n\n{user_input} [/INST]"
 
-    # Split the stripped response text into lines
-    lines = stripped_response.split('\n')
+# # NOTE:
+# # If you want to apply your own system prompt, please integrate it into the instruction part following our system prompt like this:
+# your_system_prompt = "Please, check if the answer can be inferred from the pieces of context provided."
+# prompt = f"<s>[INST] <<SYS>>{our_system_prompt}<</SYS>>\n\n{your_system_prompt}\n{user_input} [/INST]"
 
-    combined_lines = " ".join(line.strip() for line in lines if line.strip())
-    return remove_repeated_sentences(combined_lines)
+inputs = tokenizer(prompt, return_tensors="pt", add_special_tokens=False).input_ids.to(model.device)
+outputs = model.generate(input_ids=inputs, max_length=4096)[0]
 
+answer_start = int(inputs.shape[-1])
+pred = tokenizer.decode(outputs[answer_start:], skip_special_tokens=True)
 
-def generate_response(prompt, max_length=100):
-    input_ids = tokenizer.encode(prompt, return_tensors="pt")
-
-    # Generate response
-    with torch.no_grad():
-        output = model.generate(input_ids, max_length=100, num_return_sequences=1, pad_token_id=tokenizer.eos_token_id)
-
-    response = tokenizer.decode(output[0], skip_special_tokens=True)
-    cleaned_response = clean_response(response, prompt)
-
-    return cleaned_response
-
-print("Chatbot: Hi there! How can I help you?")
-while True:
-    user_input = input("You: ")
-    if user_input.lower() == "exit":
-        print("Chatbot: Goodbye!")
-        break
-
-    response = generate_response(user_input)
-    print("Chatbot:", response)
+print(pred)
