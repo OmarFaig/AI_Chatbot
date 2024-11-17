@@ -1,31 +1,55 @@
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+#from unsloth import quantize_model
+from dotenv import load_dotenv
+import os
 
-model = AutoModelForCausalLM.from_pretrained("AdaptLLM/finance-chat")
-tokenizer = AutoTokenizer.from_pretrained("AdaptLLM/finance-chat")
+# Load environment variables from .env file
+load_dotenv()
 
-# Put your input here:
-user_input = '''Use this fact to answer the question: Title of each class Trading Symbol(s) Name of each exchange on which registered
-Common Stock, Par Value $.01 Per Share MMM New York Stock Exchange
-MMM Chicago Stock Exchange, Inc.
-1.500% Notes due 2026 MMM26 New York Stock Exchange
-1.750% Notes due 2030 MMM30 New York Stock Exchange
-1.500% Notes due 2031 MMM31 New York Stock Exchange
+# Replace with the actual LLaMA model name
+model_name = "meta-llama/Llama-3.2-3B"
+token = os.getenv("HUGGING_FACE_TOKEN")  # Get the token from environment variables
 
-Which debt securities are registered to trade on a national securities exchange under 3M's name as of Q2 of 2023?'''
+# Load the tokenizer and model with the authentication token
+print("Loading tokenizer...")
+tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=token)
+print("Loading model...")
+model = AutoModelForCausalLM.from_pretrained(model_name, use_auth_token=token)
+print("Model loaded successfully.")
 
-# Apply the prompt template and system prompt of LLaMA-2-Chat demo for chat models (NOTE: NO prompt template is required for base models!)
-our_system_prompt = "\nYou are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.\n\nIf a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.\n" # Please do NOT change this
-prompt = f"<s>[INST] <<SYS>>{our_system_prompt}<</SYS>>\n\n{user_input} [/INST]"
+# Quantize the model
+print("Quantizing model...")
+#model = quantize_model(model, bits=8)
+print("Model quantized successfully.")
 
-# # NOTE:
-# # If you want to apply your own system prompt, please integrate it into the instruction part following our system prompt like this:
-# your_system_prompt = "Please, check if the answer can be inferred from the pieces of context provided."
-# prompt = f"<s>[INST] <<SYS>>{our_system_prompt}<</SYS>>\n\n{your_system_prompt}\n{user_input} [/INST]"
+# Set the padding token to be the same as the eos token
+tokenizer.pad_token = tokenizer.eos_token
 
-inputs = tokenizer(prompt, return_tensors="pt", add_special_tokens=False).input_ids.to(model.device)
-outputs = model.generate(input_ids=inputs, max_length=4096)[0]
+# Ensure the model is on the CPU
+device = torch.device("cpu")
+model.to(device)
 
-answer_start = int(inputs.shape[-1])
-pred = tokenizer.decode(outputs[answer_start:], skip_special_tokens=True)
+def generate_response(prompt):
+    inputs = tokenizer(prompt, return_tensors="pt", padding=True, truncation=True).to(device)
+    with torch.no_grad():
+        outputs = model.generate(
+            inputs.input_ids,
+            attention_mask=inputs.attention_mask,
+            max_length=100,
+            temperature=0.7,
+            top_k=50,
+            top_p=0.9,
+            repetition_penalty=1.2
+        )
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
 
-print(pred)
+if __name__ == "__main__":
+    print("Chat with LLaMA! Type 'exit' to end the conversation.")
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() == 'exit':
+            break
+        response = generate_response(user_input)
+        print(f"LLaMA: {response}")

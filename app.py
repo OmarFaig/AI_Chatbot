@@ -3,14 +3,15 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from dotenv import load_dotenv
 import os
-
+from huggingface_hub import login
+#login()
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
 
 # Replace with the actual LLaMA model name
-model_name = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+model_name = "meta-llama/Llama-3.2-1B"
 token = os.getenv("HUGGING_FACE_TOKEN")  # Get the token from environment variables
 
 # Load the tokenizer and model with the authentication token
@@ -27,15 +28,22 @@ def generate_response(prompt):
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return response
 
-@app.route('/')
-def index():
-    return "Welcome to the LLaMA Chatbot!"
+#@app.route('/')
+#def index():
+#    return "Welcome to the LLaMA Chatbot!"
 
-@app.route('/chat', methods=['POST'])
+#@app.route('/chat', methods=['POST'])
 def chat():
     user_message = request.json.get('message')
     response = generate_response(user_message)
+    print(response)
     return jsonify({'response': response})
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    print("Chat with LLaMA! Type 'exit' to end the conversation.")
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() == 'exit':
+            break
+        response = generate_response(user_input)
+        print(f"LLaMA: {response}")
