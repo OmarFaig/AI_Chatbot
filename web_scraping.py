@@ -8,7 +8,7 @@ def scrape_article_links(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, timeout=10)
     response.raise_for_status()
     soup = BeautifulSoup(response.content, 'html.parser')
     links = []
@@ -24,7 +24,7 @@ def scrape_article(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, timeout=10)
     response.raise_for_status()
     soup = BeautifulSoup(response.content, 'html.parser')
     title = soup.find('h1').get_text() if soup.find('h1') else 'No Title'
@@ -37,7 +37,7 @@ def save_to_csv(data, filename):
     df.to_csv(filename, index=False)
 
 if __name__ == "__main__":
-    base_url = 'https://en.wikipedia.org/wiki/S%26P_500'
+    base_url = 'https://en.wikipedia.org/wiki/S%26P_500#Derivatives'
     article_links = scrape_article_links(base_url)
 
     articles = []
@@ -48,6 +48,8 @@ if __name__ == "__main__":
             articles.append(article)
         except requests.exceptions.RequestException as e:
             print(f"Failed to scrape {link}: {e}")
+        except Exception as e:
+            print(f"An error occurred while scraping {link}: {e}")
         time.sleep(1)  # Be polite and avoid overwhelming the server
 
     save_to_csv(articles, 'financial_news.csv')
