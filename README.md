@@ -8,8 +8,9 @@ In this project, a chatbot for financial questions is implemented using the LLaM
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Web Scraping for Data](#web-scraping-for-data)
-- [Fine-Tuning the Model](#fine-tuning-the-model)
+  - [Running the Chatbot Locally](#running-the-chatbot-locally)
+  - [Web Scraping for Data](#web-scraping-for-data)
+  - [Fine-Tuning the Model](#fine-tuning-the-model)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -23,6 +24,7 @@ This project aims to create an AI chatbot capable of answering financial questio
 - Fine-tune the model with custom financial data.
 - Web scraping for collecting financial data.
 - Quantized model for efficient local testing.
+- Easy-to-use interface for interacting with the chatbot.
 
 ## Installation
 
@@ -30,5 +32,3 @@ This project aims to create an AI chatbot capable of answering financial questio
    ```sh
    git clone https://github.com/yourusername/AI_Chatbot.git
    cd AI_Chatbot
-python3 -m venv venv
-source venv/bin/activate
